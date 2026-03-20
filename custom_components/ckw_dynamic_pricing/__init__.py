@@ -70,20 +70,44 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
     def _process_data(self,data:Dict[str, Any]) -> Dict[str, Any]:
-        """Process API data."""
-        preisdaten = data.get("preisdaten", [])
-        
-        if not preisdaten:
-            return {}
+"""Process API data."""
+    from datetime import datetime, timezone
+    import re
 
-        prices = [p["preis_ct_pro_kwh"] for p in preisdaten]
-        current_hour = 0
-        
-        return {
-            "current_price": prices[current_hour] if current_hour < len(prices) else 0,
-            "min_price": min(prices),
-            "max_price": max(prices),
-            "avg_price": sum(prices) / len(prices) if prices else 0,
-            "threshold": self.config.get("price_threshold", 10),
-            "prices": preisdaten,
-        }
+    prices_raw = data.get("prices", [])
+
+    if not prices_raw:
+        return {}
+
+    # Aktuellen 15-Minuten-Block finden
+    now = datetime.now().astimezone()
+    current_price = 0.0
+
+    for entry in prices_raw:
+        try:
+            start = datetime.fromisoformat(entry["start_timestamp"])
+            end = datetime.fromisoformat(entry["end_timestamp"])
+            if start <= now < end:
+                current_price = entry["integrated"][0]["value"]
+                break
+        except (KeyError, IndexError, ValueError):
+            continue
+
+    # Alle integrated-Preise
+    all_prices = []
+    for entry in prices_raw:
+        try:
+            all_prices.append(entry["integrated"][0]["value"])
+        except (KeyError, IndexError):
+            continue
+
+    threshold_chf = self.config.get("price_threshold", 10) / 100  # Rappen → CHF
+
+    return {
+        "current_price": round(current_price * 100, 4),   # CHF → Rappen
+        "min_price": round(min(all_prices) * 100, 4),
+        "max_price": round(max(all_prices) * 100, 4),
+        "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
+        "threshold": self.config.get("price_threshold", 10),
+        "prices": prices_raw,
+    }
