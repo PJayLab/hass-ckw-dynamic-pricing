@@ -5,7 +5,7 @@
         "title": "CKW Dynamic Pricing Konfiguration",
         "description": "Konfiguriere die CKW Dynamic Pricing Integration",
         "data": {
-          "price_threshold": "Preisschwelle (Rappen/kWh)",
+          "price_threshold": "Preisschwelle (CHF/kWh)",
           "netzebene": "Netzebene"
         }
       }
