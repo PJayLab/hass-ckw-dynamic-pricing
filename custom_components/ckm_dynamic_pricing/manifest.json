@@ -3,13 +3,13 @@
   "domain": "ckw_dynamic_pricing",
   "name": "CKW Dynamic Pricing",
   "codeowners": [
-    "@sascha"
+    "@trolli-ch"
   ],
   "config_flow": true,
   "documentation": "https://github.com/sascha-repos/hass-ckw-dynamic-pricing",
   "requirements": [],
   "version": "1.0.0",
-  "homeassistant": "2026.3.0",
+  "homeassistant": "2024.1.0",
   "issue_tracker": "https://github.com/sascha-repos/hass-ckw-dynamic-pricing/issues",
   "integration_type": "service"
 }
