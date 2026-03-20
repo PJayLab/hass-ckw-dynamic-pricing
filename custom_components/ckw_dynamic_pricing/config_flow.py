@@ -16,7 +16,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema({
 })
 
 
-class CKWConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class CKWConfigFlow(config_entries.ConfigFlow, domain="ckw_dynamic_pricing"):
     """Handle a config flow for CKW Dynamic Pricing."""
 
     VERSION = 1
