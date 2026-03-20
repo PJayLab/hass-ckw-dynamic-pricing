@@ -69,7 +69,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(self,  Dict[str, Any]) -> Dict[str, Any]:
+    def _process_data(self,data:Dict[str, Any]) -> Dict[str, Any]:
         """Process API data."""
         preisdaten = data.get("preisdaten", [])
         
