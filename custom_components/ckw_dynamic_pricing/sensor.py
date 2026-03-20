@@ -59,7 +59,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
     @property
     def native_value(self) -> float:
         """Return the state of the sensor."""
-        if self.coordinator.
+        if self.coordinator.data:
             return self.coordinator.data.get("current_price", 0)
         return 0
 
@@ -95,7 +95,7 @@ class CKWMinPriceSensor(CKWPriceSensorBase):
     @property
     def native_value(self) -> float:
         """Return the state of the sensor."""
-        if self.coordinator.
+        if self.coordinator.data:
             return self.coordinator.data.get("min_price", 0)
         return 0
 
@@ -126,7 +126,7 @@ class CKWMaxPriceSensor(CKWPriceSensorBase):
     @property
     def native_value(self) -> float:
         """Return the state of the sensor."""
-        if self.coordinator.
+        if self.coordinator.data:
             return self.coordinator.data.get("max_price", 0)
         return 0
 
@@ -157,7 +157,7 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
     @property
     def native_value(self) -> float:
         """Return the state of the sensor."""
-        if self.coordinator.
+        if self.coordinator.data:
             return self.coordinator.data.get("avg_price", 0)
         return 0
 
