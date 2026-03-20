@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "CKW Dynamische Strompreise Setup",
+        "description": "Konfiguriere die CKW Dynamic Pricing Integration",
+        "data": {
+          "price_threshold": "Preisschwelle (CHF/kWh)",
+          "netzebene": "Netzebene"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Ein unbekannter Fehler ist aufgetreten"
+    }
+  }
+}
