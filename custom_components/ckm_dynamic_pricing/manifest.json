@@ -6,10 +6,10 @@
     "@trolli-ch"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/sascha-repos/hass-ckw-dynamic-pricing",
+  "documentation": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing",
   "requirements": [],
   "version": "1.0.0",
-  "homeassistant": "2024.1.0",
-  "issue_tracker": "https://github.com/sascha-repos/hass-ckw-dynamic-pricing/issues",
+  "homeassistant": "2026.3.2",
+  "issue_tracker": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing/issues",
   "integration_type": "service"
 }
