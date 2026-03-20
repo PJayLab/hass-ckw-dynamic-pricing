@@ -5,22 +5,26 @@ from typing import Any, Dict, Optional
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "ckw_dynamic_pricing"
 
-STEP_USER_DATA_SCHEMA = vol.Schema({
-    vol.Required("price_threshold", default=10): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
-    vol.Required("netzebene", default="N1"): vol.In(["N1", "N2", "N3"]),
-})
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required("price_threshold", default=10): vol.All(
+            vol.Coerce(float), vol.Range(min=0, max=100)
+        ),
+        vol.Required("netzebene", default="N1"): vol.In(["N1", "N2", "N3"]),
+    }
+)
 
 
-class CKWConfigFlow(config_entries.ConfigFlow, domain="ckw_dynamic_pricing"):
+class CKWConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for CKW Dynamic Pricing."""
 
     VERSION = 1
-    MINOR_VERSION = 1
 
     async def async_step_user(
         self, user_input: Optional[Dict[str, Any]] = None
