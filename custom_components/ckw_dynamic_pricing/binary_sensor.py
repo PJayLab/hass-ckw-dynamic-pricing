@@ -47,7 +47,7 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return True if price is below threshold."""
-        if self.coordinator.
+        if self.coordinator.data:
             current_price = self.coordinator.data.get("current_price", 0)
             threshold = self.coordinator.data.get("threshold", 10)
             return current_price < threshold
