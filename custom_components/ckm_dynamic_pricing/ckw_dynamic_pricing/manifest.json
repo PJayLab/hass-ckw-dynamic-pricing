@@ -1,0 +1,17 @@
+{
+  "manifest_version": 1,
+  "domain": "ckw_dynamic_pricing",
+  "name": "CKW Dynamic Pricing",
+  "codeowners": [
+    "@trolli-ch"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing",
+  "issue_tracker": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing/issues",
+  "requirements": [],
+  "version": "1.0.0",
+  "iot_class": "cloud_polling",
+  "homeassistant": "2024.1.0",
+  "issue_tracker": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing/issues",
+  "integration_type": "service"
+}
