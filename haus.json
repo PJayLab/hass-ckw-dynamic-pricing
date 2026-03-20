@@ -1,0 +1,9 @@
+{
+  "name": "CKW Dynamic Pricing",
+  "domains": ["sensor", "binary_sensor"],
+  "documentation": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing",
+  "homeassistant": "2024.1.0",
+  "issue_tracker": "https://github.com/trolli-ch/hass-ckw-dynamic-pricing/issues",
+  "requirements": [],
+  "render_readme": true
+}
