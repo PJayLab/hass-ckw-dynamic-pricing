@@ -50,3 +50,24 @@ class CKWConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
         )
+
+class CKWOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for CKW Dynamic Pricing."""
+
+    async def async_step_init(self, user_input=None):
+        """Handle options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(
+                    "price_threshold",
+                    default=self.config_entry.options.get(
+                        "price_threshold",
+                        self.config_entry.data.get("price_threshold", 10)
+                    )
+                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+            }),
+        )
