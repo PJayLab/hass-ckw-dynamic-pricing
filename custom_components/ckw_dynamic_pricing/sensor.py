@@ -186,7 +186,7 @@ class CKWAllPricesSensor(CKWPriceSensorBase):
     @property
     def native_value(self) -> int:
         """Return number of price entries."""
-        if self.coordinator.
+        if self.coordinator.data:
             return len(self.coordinator.data.get("prices", []))
         return 0
 
