@@ -66,7 +66,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rappen/kWh"
+        return "Rp/kWh"
 
     @property
     def icon(self) -> str:
@@ -102,7 +102,7 @@ class CKWMinPriceSensor(CKWPriceSensorBase):
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rappen/kWh"
+        return "Rp/kWh"
 
     @property
     def icon(self) -> str:
@@ -133,7 +133,7 @@ class CKWMaxPriceSensor(CKWPriceSensorBase):
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rappen/kWh"
+        return "Rp/kWh"
 
     @property
     def icon(self) -> str:
@@ -164,7 +164,7 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rappen/kWh"
+        return "Rp/kWh"
 
     @property
     def icon(self) -> str:
