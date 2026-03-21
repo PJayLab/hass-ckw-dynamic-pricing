@@ -93,6 +93,6 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             "min_price": round(min(all_prices) * 100, 4),
             "max_price": round(max(all_prices) * 100, 4),
             "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
-            "threshold": self.config.get("price_threshold", 10),
+            "threshold": float(self.hass.states.get("input_number.ckw_price_threshold").state) if self.hass.states.get("input_number.ckw_price_threshold") else 10,
             "prices": prices_raw,
         }
