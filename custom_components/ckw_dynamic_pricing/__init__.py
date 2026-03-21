@@ -48,21 +48,25 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         self.api_url = "https://e-ckw-public-data.de-c1.eu1.cloudhub.io/api/v1/netzinformationen/energie/dynamische-preise"
 
     async def _async_update_data(self) -> Dict[str, Any]:
-        """Fetch data from CKW API."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    self.api_url,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as resp:
-                    if resp.status != 200:
-                        raise UpdateFailed(f"CKW API returned {resp.status}")
-                    data = await resp.json()
-                    return self._process_data(data)
-        except aiohttp.ClientError as err:
-            raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
+    """Fetch data from CKW API."""
+    # Threshold hier lesen, da wir im async context sind
+    threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
+    threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
 
-    def _process_data(self,data:Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                self.api_url,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status != 200:
+                    raise UpdateFailed(f"CKW API returned {resp.status}")
+                data = await resp.json()
+                return self._process_data(data, threshold)
+    except aiohttp.ClientError as err:
+        raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
+
+    def _process_data(self,data:Dict[str, Any], threshold: float = 10) -> Dict[str, Any]:
         """Process API data."""
         prices_raw = data.get("prices", [])
         if not prices_raw:
@@ -93,6 +97,6 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             "min_price": round(min(all_prices) * 100, 4),
             "max_price": round(max(all_prices) * 100, 4),
             "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
-            "threshold": float(self.hass.states.get("input_number.ckw_price_threshold").state) if self.hass.states.get("input_number.ckw_price_threshold") else 10,
+            "threshold": threshold,
             "prices": prices_raw,
         }
