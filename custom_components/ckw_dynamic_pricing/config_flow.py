@@ -26,6 +26,12 @@ class CKWConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    @config_entries.callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow."""
+        return CKWOptionsFlow(config_entry)
+
     async def async_step_user(
         self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
