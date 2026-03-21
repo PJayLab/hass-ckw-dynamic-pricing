@@ -200,7 +200,7 @@ class CKWAllPricesSensor(CKWPriceSensorBase):
 
     @property
     def extra_state_attributes(self) -> dict:
-        if not self.coordinator.
+        if not self.coordinator.data:
             return {}
         prices = self.coordinator.data.get("prices", [])
         formatted = []
