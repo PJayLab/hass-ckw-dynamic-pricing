@@ -61,7 +61,7 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         """Return extra state attributes."""
-        if self.coordinator.
+        if self.coordinator.data:
             return {
                 "current_price": self.coordinator.data.get("current_price", 0),
                 "threshold": self.coordinator.data.get("threshold", 10),
