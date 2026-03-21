@@ -48,10 +48,10 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         self.api_url = "https://e-ckw-public-data.de-c1.eu1.cloudhub.io/api/v1/netzinformationen/energie/dynamische-preise"
 
     async def _async_update_data(self) -> Dict[str, Any]:
-    """Fetch data from CKW API."""
-    # Threshold hier lesen, da wir im async context sind
-    threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
-    threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
+        """Fetch data from CKW API."""
+        # Threshold hier lesen, da wir im async context sind
+        threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
+        threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
 
     try:
         async with aiohttp.ClientSession() as session:
