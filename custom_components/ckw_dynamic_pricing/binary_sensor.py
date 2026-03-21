@@ -59,6 +59,16 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return "mdi:check-circle" if self.is_on else "mdi:close-circle"
 
     @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra state attributes."""
+        if self.coordinator.
+            return {
+                "current_price": self.coordinator.data.get("current_price", 0),
+                "threshold": self.coordinator.data.get("threshold", 10),
+            }
+        return {}
+
+    @property
     def available(self) -> bool:
         """Return if entity is available."""
         return self.coordinator.last_update_success
