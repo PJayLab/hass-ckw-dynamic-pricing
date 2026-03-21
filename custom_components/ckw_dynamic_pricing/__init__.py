@@ -1,6 +1,6 @@
 """CKW Dynamic Pricing Integration for Home Assistant."""
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Dict
 
 import aiohttp
@@ -17,16 +17,11 @@ SCAN_INTERVAL = timedelta(hours=1)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up CKW Dynamic Pricing from a config entry."""
-
     hass.data.setdefault(DOMAIN, {})
-
     coordinator = CKWPricingCoordinator(hass, entry.data)
     await coordinator.async_config_entry_first_refresh()
-
     hass.data[DOMAIN][entry.entry_id] = coordinator
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     return True
 
 
@@ -58,23 +53,18 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     self.api_url,
-                    params={"netzebene": self.config.get("netzebene", "N1")},
-                    timeout=aiohttp.ClientTimeout(total=10)
+                    timeout=aiohttp.ClientTimeout(total=10),
                 ) as resp:
                     if resp.status != 200:
                         raise UpdateFailed(f"CKW API returned {resp.status}")
-                    
                     data = await resp.json()
                     return self._process_data(data)
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
     def _process_data(self,data:Dict[str, Any]) -> Dict[str, Any]:
-         """Process API data."""
-        from datetime import datetime
-
+        """Process API data."""
         prices_raw = data.get("prices", [])
-
         if not prices_raw:
             return {}
 
