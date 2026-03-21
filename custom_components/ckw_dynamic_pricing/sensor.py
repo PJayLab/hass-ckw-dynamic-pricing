@@ -24,6 +24,7 @@ async def async_setup_entry(
         CKWMinPriceSensor(coordinator, entry),
         CKWMaxPriceSensor(coordinator, entry),
         CKWAvgPriceSensor(coordinator, entry),
+        CKWAllPricesSensor(coordinator, entry),
     ]
 
     async_add_entities(entities)
@@ -170,3 +171,46 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
     def icon(self) -> str:
         """Return the icon."""
         return "mdi:chart-line"
+
+class CKWAllPricesSensor(CKWPriceSensorBase):
+    """Sensor for all CKW prices of the day."""
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self.entry.entry_id}_all_prices"
+
+    @property
+    def name(self) -> str:
+        return "CKW All Prices"
+
+    @property
+    def native_value(self) -> int:
+        """Return number of price entries."""
+        if self.coordinator.
+            return len(self.coordinator.data.get("prices", []))
+        return 0
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        return "Einträge"
+
+    @property
+    def icon(self) -> str:
+        return "mdi:format-list-bulleted"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if not self.coordinator.
+            return {}
+        prices = self.coordinator.data.get("prices", [])
+        formatted = []
+        for entry in prices:
+            try:
+                formatted.append({
+                    "start": entry["start_timestamp"],
+                    "end": entry["end_timestamp"],
+                    "price": round(entry["integrated"][0]["value"] * 100, 4),
+                })
+            except (KeyError, IndexError):
+                continue
+        return {"prices": formatted}
