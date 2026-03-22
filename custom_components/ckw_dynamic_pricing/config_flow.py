@@ -30,7 +30,7 @@ class CKWConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @config_entries.callback
     def async_get_options_flow(config_entry):
         """Get the options flow."""
-        return CKWOptionsFlow(config_entry)
+        return CKWOptionsFlow()
 
     async def async_step_user(
         self, user_input: Optional[Dict[str, Any]] = None
@@ -57,7 +57,11 @@ class CKWConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-class CKWOptionsFlow(config_entries.OptionsFlow):
+import voluptuous as vol
+from homeassistant.config_entries import OptionsFlow
+from homeassistant.helpers import config_validation as cv
+
+class CKWOptionsFlow(OptionsFlow):
     """Handle options flow for CKW Dynamic Pricing."""
 
     async def async_step_init(self, user_input=None):
@@ -65,15 +69,19 @@ class CKWOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        # Verwende self.config_entry direkt (read-only Property) und self.options
+        default_price = self.config_entry.options.get(
+            "price_threshold",
+            self.config_entry.data.get("price_threshold", 10)
+        )
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required(
                     "price_threshold",
-                    default=self.config_entry.options.get(
-                        "price_threshold",
-                        self.config_entry.data.get("price_threshold", 10)
-                    )
+                    default=default_price
                 ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             }),
         )
+        
