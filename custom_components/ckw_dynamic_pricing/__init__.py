@@ -71,11 +71,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if not prices_raw:
             return {}
 
-        tz_plus1 = timezone(timedelta(hours=1))  # fix +01:00, wie die API
-        now = datetime.now(tz=tz_plus1)
-        
-        _LOGGER.warning("DEBUG now: %s | first_start: %s | first_end: %s", now, prices_raw[0].get("start_timestamp"), prices_raw[0].get("end_timestamp"))
-                   
+        now = datetime.now(tz=timezone.utc)
+                        
         current_price = 0.0
         for entry in prices_raw:
             try:
@@ -83,9 +80,9 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 end = datetime.fromisoformat(entry["end_timestamp"])
 
                 if start.tzinfo is None:
-                    start = start.replace(tzinfo=tz_plus1)
+                    start = start.replace(tzinfo=timezone.utc)
                 if end.tzinfo is None:
-                    end = end.replace(tzinfo=tz_plus1)
+                    end = end.replace(tzinfo=timezone.utc)
 
                 if start <= now < end:
                     current_price = entry["integrated"][0]["value"]
