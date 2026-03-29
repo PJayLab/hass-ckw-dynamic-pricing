@@ -93,6 +93,10 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 continue
 
         all_prices = [entry["price"] for entry in prices_raw if "price" in entry]
+
+        if not all_prices:
+            _LOGGER.warning("DEBUG prices_raw sample: %s", prices_raw[:2])
+            raise UpdateFailed("No price data found in API response")
         
         return {
             "current_price": round(current_price, 4),
