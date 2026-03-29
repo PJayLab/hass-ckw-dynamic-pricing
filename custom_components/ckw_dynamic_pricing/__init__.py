@@ -73,6 +73,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
         tz_plus1 = timezone(timedelta(hours=1))  # fix +01:00, wie die API
         now = datetime.now(tz=tz_plus1)
+        
+        _LOGGER.warning("DEBUG now: %s | first_start: %s | first_end: %s", now, prices_raw[0].get("start_timestamp"), prices_raw[0].get("end_timestamp"))
                    
         current_price = 0.0
         for entry in prices_raw:
