@@ -47,21 +47,52 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         self.config = config
         self.api_url = "https://e-ckw-public-data.de-c1.eu1.cloudhub.io/api/v1/netzinformationen/energie/dynamische-preise"
 
+    async def _fetch_day(self, session: aiohttp.ClientSession, date) -> list:
+        """Fetch prices for a specific date."""
+        start = f"{date}T00:00:00+01:00"
+        end = f"{date}T23:59:00+01:00"
+        params = {
+            "tariff_name": self.config.get("tariff_name", "home_dynamic"),
+            "start_timestamp": start,
+            "end_timestamp": end,
+            "tariff_type": "integrated",
+        }
+        try:
+            async with session.get(
+                self.api_url,
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status != 200:
+                    _LOGGER.warning("CKW API returned %s for date %s", resp.status, date)
+                    return []
+                data = await resp.json()
+                return data.get("prices", [])
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("Error fetching CKW data for date %s: %s", date, err)
+            return []
+
     async def _async_update_data(self) -> Dict[str, Any]:
-        """Fetch data from CKW API."""
+        """Fetch data from CKW API for today and tomorrow."""
         threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
         threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
 
+        tz_plus1 = timezone(timedelta(hours=1))
+        today = datetime.now(tz_plus1).date()
+        tomorrow = today + timedelta(days=1)
+
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    self.api_url,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as resp:
-                    if resp.status != 200:
-                        raise UpdateFailed(f"CKW API returned {resp.status}")
-                    data = await resp.json()
-                    return self._process_data(data, threshold)
+                prices_today = await self._fetch_day(session, today)
+                prices_tomorrow = await self._fetch_day(session, tomorrow)
+
+            combined = prices_today + prices_tomorrow
+
+            if not combined:
+                raise UpdateFailed("No price data received from CKW API")
+
+            return self._process_data({"prices": combined}, threshold)
+
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
@@ -72,8 +103,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             return {}
 
         now = datetime.now(tz=timezone.utc)
-        #_LOGGER.warning("DEBUG now UTC: %s", now)
-                        
+
         current_price = 0.0
         for entry in prices_raw:
             try:
@@ -85,17 +115,11 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 if end.tzinfo is None:
                     end = end.replace(tzinfo=timezone.utc)
 
-                #_LOGGER.warning("DEBUG compare: %s <= %s < %s → %s", start, now, end, start <= now < end)
-
                 if start <= now < end:
                     current_price = entry["integrated"][0]["value"]
-                    #_LOGGER.warning("DEBUG hit! start=%s end=%s integrated=%s", start, end, entry["integrated"])
-                    #_LOGGER.warning("DEBUG index: %d", list(prices_raw).index(entry))
                     break
             except (KeyError, IndexError, ValueError):
                 continue
-        
-        #_LOGGER.warning("DEBUG final current_price: %s", current_price)
 
         all_prices = [
             entry["integrated"][0]["value"]
@@ -105,7 +129,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
         if not all_prices:
             raise UpdateFailed("No price data found in API response")
-        
+
         return {
             "current_price": round(current_price * 100, 4),
             "min_price": round(min(all_prices) * 100, 4),
