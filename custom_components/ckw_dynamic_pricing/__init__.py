@@ -1,6 +1,7 @@
 """CKW Dynamic Pricing Integration for Home Assistant."""
 import logging
-from datetime import datetime, timedelta
+#from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import aiohttp
@@ -71,31 +72,37 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if not prices_raw:
             return {}
 
-        now = datetime.now().astimezone()
+        now = datetime.now(tz=timezone.utc)  # immer UTC, kein Sommerzeit-Problem
         current_price = 0.0
 
         for entry in prices_raw:
             try:
                 start = datetime.fromisoformat(entry["start_timestamp"])
                 end = datetime.fromisoformat(entry["end_timestamp"])
-                if start <= now < end:
-                    current_price = entry["integrated"][0]["value"]
-                    break
-            except (KeyError, IndexError, ValueError):
-                continue
+                # Falls kein Timezone-Info vorhanden → als UTC behandeln
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
 
-        all_prices = []
-        for entry in prices_raw:
-            try:
-                all_prices.append(entry["integrated"][0]["value"])
-            except (KeyError, IndexError):
-                continue
+            if start <= now < end:
+                current_price = entry["integrated"][0]["value"]
+                break
+        except (KeyError, IndexError, ValueError):
+            continue
 
-        return {
-            "current_price": round(current_price * 100, 4),
-            "min_price": round(min(all_prices) * 100, 4),
-            "max_price": round(max(all_prices) * 100, 4),
-            "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
-            "threshold": threshold,
-            "prices": prices_raw,
-        }
+    all_prices = []
+    for entry in prices_raw:
+        try:
+            all_prices.append(entry["integrated"][0]["value"])
+        except (KeyError, IndexError):
+            continue
+
+    return {
+        "current_price": round(current_price * 100, 4),
+        "min_price": round(min(all_prices) * 100, 4),
+        "max_price": round(max(all_prices) * 100, 4),
+        "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
+        "threshold": threshold,
+        "prices": prices_raw,
+    }
