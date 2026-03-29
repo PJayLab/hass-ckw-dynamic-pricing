@@ -74,7 +74,12 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
         tz_zurich = ZoneInfo("Europe/Zurich")
         now = datetime.now(tz=tz_zurich)
-
+        
+        # DEBUG: Zeige aktuelle Zeit und erste 3 Timestamps
+        _LOGGER.warning("DEBUG now: %s", now)
+        for i, entry in enumerate(prices_raw[:3]):
+            _LOGGER.warning("DEBUG entry %d: start=%s end=%s", i, entry.get("start_timestamp"), entry.get("end_timestamp"))
+        
         current_price = 0.0
         for entry in prices_raw:
             try:
