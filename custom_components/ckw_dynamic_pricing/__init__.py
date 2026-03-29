@@ -86,26 +86,24 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 prices_today = await self._fetch_day(session, today)
                 prices_tomorrow = await self._fetch_day(session, tomorrow)
 
+            if not prices_today:
+                raise UpdateFailed("No price data received from CKW API for today")
+
             combined = prices_today + prices_tomorrow
-
-            if not combined:
-                raise UpdateFailed("No price data received from CKW API")
-
-            return self._process_data({"prices": combined}, threshold)
+            return self._process_data(prices_today, combined, threshold)
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(self, data: Dict[str, Any], threshold: float = 10) -> Dict[str, Any]:
+    def _process_data(self, prices_today: list, prices_all: list, threshold: float = 10) -> Dict[str, Any]:
         """Process API data."""
-        prices_raw = data.get("prices", [])
-        if not prices_raw:
+        if not prices_today:
             return {}
 
         now = datetime.now(tz=timezone.utc)
 
         current_price = 0.0
-        for entry in prices_raw:
+        for entry in prices_today:
             try:
                 start = datetime.fromisoformat(entry["start_timestamp"])
                 end = datetime.fromisoformat(entry["end_timestamp"])
@@ -121,20 +119,20 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             except (KeyError, IndexError, ValueError):
                 continue
 
-        all_prices = [
+        today_prices = [
             entry["integrated"][0]["value"]
-            for entry in prices_raw
+            for entry in prices_today
             if "integrated" in entry and entry["integrated"]
         ]
 
-        if not all_prices:
+        if not today_prices:
             raise UpdateFailed("No price data found in API response")
 
         return {
             "current_price": round(current_price * 100, 4),
-            "min_price": round(min(all_prices) * 100, 4),
-            "max_price": round(max(all_prices) * 100, 4),
-            "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
+            "min_price": round(min(today_prices) * 100, 4),
+            "max_price": round(max(today_prices) * 100, 4),
+            "avg_price": round(sum(today_prices) / len(today_prices) * 100, 4),
             "threshold": threshold,
-            "prices": prices_raw,
+            "prices": prices_all,
         }
