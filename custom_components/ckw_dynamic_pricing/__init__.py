@@ -72,6 +72,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             return {}
 
         now = datetime.now(tz=timezone.utc)
+        _LOGGER.warning("DEBUG now UTC: %s", now)
                         
         current_price = 0.0
         for entry in prices_raw:
@@ -83,6 +84,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                     start = start.replace(tzinfo=timezone.utc)
                 if end.tzinfo is None:
                     end = end.replace(tzinfo=timezone.utc)
+
+                _LOGGER.warning("DEBUG compare: %s <= %s < %s → %s", start, now, end, start <= now < end)
 
                 if start <= now < end:
                     current_price = entry["integrated"][0]["value"]
