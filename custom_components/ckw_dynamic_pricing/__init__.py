@@ -2,7 +2,6 @@
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict
-from zoneinfo import ZoneInfo
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -72,8 +71,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if not prices_raw:
             return {}
 
-        tz_zurich = ZoneInfo("Europe/Zurich")
-        now = datetime.now(tz=tz_zurich)
+        tz_plus1 = timezone(timedelta(hours=1))  # fix +01:00, wie die API
+        now = datetime.now(tz=tz_plus1)
                    
         current_price = 0.0
         for entry in prices_raw:
@@ -82,9 +81,9 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 end = datetime.fromisoformat(entry["end_timestamp"])
 
                 if start.tzinfo is None:
-                    start = start.replace(tzinfo=tz_zurich)
+                    start = start.replace(tzinfo=tz_plus1)
                 if end.tzinfo is None:
-                    end = end.replace(tzinfo=tz_zurich)
+                    end = end.replace(tzinfo=tz_plus1)
 
                 if start <= now < end:
                     current_price = entry["integrated"][0]["value"]
