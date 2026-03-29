@@ -89,7 +89,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
                 if start <= now < end:
                     current_price = entry["integrated"][0]["value"]
-                    _LOGGER.warning("DEBUG hit! start=%s end=%s price=%s", start, end, current_price)
+                    _LOGGER.warning("DEBUG hit! start=%s end=%s integrated=%s", start, end, entry["integrated"])
                     break
             except (KeyError, IndexError, ValueError):
                 continue
