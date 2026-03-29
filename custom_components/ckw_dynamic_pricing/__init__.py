@@ -93,11 +93,12 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                     break
             except (KeyError, IndexError, ValueError):
                 continue
+        
+        _LOGGER.warning("DEBUG final current_price: %s", current_price)
 
         all_prices = [
             entry["integrated"][0]["value"]
             for entry in prices_raw
-            _LOGGER.warning("DEBUG final current_price: %s", current_price)
             if "integrated" in entry and entry["integrated"]
         ]
 
