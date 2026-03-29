@@ -74,17 +74,12 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
         tz_zurich = ZoneInfo("Europe/Zurich")
         now = datetime.now(tz=tz_zurich)
-        
-        # DEBUG: Zeige aktuelle Zeit und erste 3 Timestamps
-        _LOGGER.warning("DEBUG now: %s", now)
-        for i, entry in enumerate(prices_raw[:3]):
-            _LOGGER.warning("DEBUG entry %d: start=%s end=%s", i, entry.get("start_timestamp"), entry.get("end_timestamp"))
-        
+                   
         current_price = 0.0
         for entry in prices_raw:
             try:
-                start = datetime.fromisoformat(entry["start_timestamp"])
-                end = datetime.fromisoformat(entry["end_timestamp"])
+                start = datetime.fromisoformat(entry["start"])
+                end = datetime.fromisoformat(entry["end"])
 
                 if start.tzinfo is None:
                     start = start.replace(tzinfo=tz_zurich)
@@ -92,23 +87,18 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                     end = end.replace(tzinfo=tz_zurich)
 
                 if start <= now < end:
-                    current_price = entry["integrated"][0]["value"]
+                    current_price = entry["price"]
                     break
             except (KeyError, IndexError, ValueError):
                 continue
 
-        all_prices = []
-        for entry in prices_raw:
-            try:
-                all_prices.append(entry["integrated"][0]["value"])
-            except (KeyError, IndexError):
-                continue
-
+        all_prices = [entry["price"] for entry in prices_raw if "price" in entry]
+        
         return {
-            "current_price": round(current_price * 100, 4),
-            "min_price": round(min(all_prices) * 100, 4),
-            "max_price": round(max(all_prices) * 100, 4),
-            "avg_price": round(sum(all_prices) / len(all_prices) * 100, 4),
+            "current_price": round(current_price, 4),
+            "min_price": round(min(all_prices), 4),
+            "max_price": round(max(all_prices), 4),
+            "avg_price": round(sum(all_prices) / len(all_prices), 4),
             "threshold": threshold,
             "prices": prices_raw,
         }
