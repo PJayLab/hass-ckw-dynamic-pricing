@@ -1,5 +1,6 @@
 """Sensor platform for CKW Dynamic Pricing."""
 import logging
+from datetime import datetime, timezone
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -60,8 +61,18 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
     @property
     def native_value(self) -> float:
         """Return the state of the sensor."""
-        if self.coordinator.data:
-            return self.coordinator.data.get("current_price", 0)
+        if not self.coordinator.data:
+            return 0
+        prices_raw = self.coordinator.data.get("prices", [])
+        now = datetime.now(tz=timezone.utc)
+        for entry in prices_raw:
+            try:
+                start = datetime.fromisoformat(entry["start_timestamp"])
+                end = datetime.fromisoformat(entry["end_timestamp"])
+                if start <= now < end:
+                    return round(entry["integrated"][0]["value"] * 100, 4)
+            except (KeyError, IndexError, ValueError):
+                continue
         return 0
 
     @property
@@ -171,6 +182,7 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
     def icon(self) -> str:
         """Return the icon."""
         return "mdi:chart-line"
+
 
 class CKWAllPricesSensor(CKWPriceSensorBase):
     """Sensor for all CKW prices of the day."""
