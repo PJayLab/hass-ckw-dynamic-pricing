@@ -12,7 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "ckw_dynamic_pricing"
 PLATFORMS = ["sensor", "binary_sensor"]
-SCAN_INTERVAL = timedelta(minutes=15)
+SCAN_INTERVAL = timedelta(hours=6)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
