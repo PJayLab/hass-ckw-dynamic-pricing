@@ -70,7 +70,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
                 start = datetime.fromisoformat(entry["start_timestamp"])
                 end = datetime.fromisoformat(entry["end_timestamp"])
                 if start <= now < end:
-                    return round(entry["integrated"][0]["value"] * 100, 4)
+                    return round(entry["integrated"][0]["value"], 4)
             except (KeyError, IndexError, ValueError):
                 continue
         return 0
@@ -78,7 +78,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rp/kWh"
+        return "CHF/kWh"
 
     @property
     def icon(self) -> str:
@@ -108,13 +108,13 @@ class CKWMinPriceSensor(CKWPriceSensorBase):
     def native_value(self) -> float:
         """Return the state of the sensor."""
         if self.coordinator.data:
-            return self.coordinator.data.get("min_price", 0)
+            return round(self.coordinator.data.get("min_price", 0) / 100, 4)
         return 0
 
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rp/kWh"
+        return "CHF/kWh"
 
     @property
     def icon(self) -> str:
@@ -139,13 +139,13 @@ class CKWMaxPriceSensor(CKWPriceSensorBase):
     def native_value(self) -> float:
         """Return the state of the sensor."""
         if self.coordinator.data:
-            return self.coordinator.data.get("max_price", 0)
+            return round(self.coordinator.data.get("max_price", 0) / 100, 4)
         return 0
 
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rp/kWh"
+        return "CHF/kWh"
 
     @property
     def icon(self) -> str:
@@ -170,13 +170,13 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
     def native_value(self) -> float:
         """Return the state of the sensor."""
         if self.coordinator.data:
-            return self.coordinator.data.get("avg_price", 0)
+            return round(self.coordinator.data.get("avg_price", 0) / 100, 4)
         return 0
 
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
-        return "Rp/kWh"
+        return "CHF/kWh"
 
     @property
     def icon(self) -> str:
@@ -221,7 +221,7 @@ class CKWAllPricesSensor(CKWPriceSensorBase):
                 formatted.append({
                     "start": entry["start_timestamp"],
                     "end": entry["end_timestamp"],
-                    "price": round(entry["integrated"][0]["value"] * 100, 4),
+                    "price": round(entry["integrated"][0]["value"], 4),
                 })
             except (KeyError, IndexError):
                 continue
