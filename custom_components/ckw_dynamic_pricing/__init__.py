@@ -1,12 +1,13 @@
 """CKW Dynamic Pricing Integration for Home Assistant."""
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, time
 from typing import Any, Dict
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,8 +50,19 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
     async def _fetch_day(self, session: aiohttp.ClientSession, date) -> list:
         """Fetch prices for a specific date."""
-        start = f"{date}T00:00:00+01:00"
-        end = f"{date}T23:59:00+01:00"
+        local_tz = dt_util.get_time_zone(self.hass.config.time_zone)
+
+        start = datetime.combine(
+            date,
+            time.min,
+            tzinfo=local_tz,
+        ).isoformat()
+
+        end = datetime.combine(
+            date,
+            time.max,
+            tzinfo=local_tz,
+        ).isoformat()
         params = {
             "tariff_name": self.config.get("tariff_name", "home_dynamic"),
             "start_timestamp": start,
@@ -77,8 +89,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
         threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
 
-        tz_plus1 = timezone(timedelta(hours=1))
-        today = datetime.now(tz_plus1).date()
+        today = dt_util.now().date()
         tomorrow = today + timedelta(days=1)
 
         try:
@@ -100,7 +111,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if not prices_today:
             return {}
 
-        now = datetime.now(tz=timezone.utc)
+        now = dt_util.now()
 
         current_price = 0.0
         for entry in prices_today:
@@ -109,9 +120,9 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 end = datetime.fromisoformat(entry["end_timestamp"])
 
                 if start.tzinfo is None:
-                    start = start.replace(tzinfo=timezone.utc)
+                    start = start.replace(tzinfo=dt_util.now())
                 if end.tzinfo is None:
-                    end = end.replace(tzinfo=timezone.utc)
+                    end = end.replace(tzinfo=dt_util.now())
 
                 if start <= now < end:
                     current_price = entry["integrated"][0]["value"]
