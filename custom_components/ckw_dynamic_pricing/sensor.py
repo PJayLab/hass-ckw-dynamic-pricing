@@ -1,11 +1,14 @@
 """Sensor platform for CKW Dynamic Pricing."""
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
+
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.event import async_track_time_change
+from homeassistant.util import dt as dt_util
 
 from . import CKWPricingCoordinator, DOMAIN
 
@@ -18,6 +21,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor platform."""
+
     coordinator: CKWPricingCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
@@ -34,60 +38,128 @@ async def async_setup_entry(
 class CKWPriceSensorBase(CoordinatorEntity, SensorEntity):
     """Base class for CKW price sensors."""
 
-    def __init__(self, coordinator: CKWPricingCoordinator, entry: ConfigEntry) -> None:
-        """Initialize the sensor."""
+    def __init__(
+        self,
+        coordinator: CKWPricingCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize sensor."""
         super().__init__(coordinator)
         self.entry = entry
 
     @property
     def available(self) -> bool:
-        """Return if entity is available."""
+        """Return availability."""
         return self.coordinator.last_update_success
 
 
 class CKWCurrentPriceSensor(CKWPriceSensorBase):
     """Sensor for current CKW price."""
 
+    def __init__(
+        self,
+        coordinator: CKWPricingCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize."""
+        super().__init__(coordinator, entry)
+
+        self._attr_native_value = None
+        self._remove_listener = None
+
+    async def async_added_to_hass(self):
+        """Register quarter-hour updates."""
+
+        await super().async_added_to_hass()
+
+        self._remove_listener = async_track_time_change(
+            self.hass,
+            self._update_current_price,
+            minute=(0, 15, 30, 45),
+            second=5,
+        )
+
+        # Initial update
+        self._update_current_price(None)
+
+    async def async_will_remove_from_hass(self):
+        """Cleanup."""
+
+        if self._remove_listener:
+            self._remove_listener()
+
+        await super().async_will_remove_from_hass()
+
+    def _update_current_price(self, now):
+        """Calculate current price from cached API data."""
+
+        if not self.coordinator.data:
+            self._attr_native_value = None
+            self.async_write_ha_state()
+            return
+
+        prices = self.coordinator.data.get("prices", [])
+
+        current_price = None
+        now = dt_util.now()
+
+        local_tz = dt_util.get_time_zone(
+            self.hass.config.time_zone
+        )
+
+        for entry in prices:
+            try:
+                start = datetime.fromisoformat(
+                    entry["start_timestamp"]
+                )
+
+                end = datetime.fromisoformat(
+                    entry["end_timestamp"]
+                )
+
+                # Handle timestamps without timezone
+                if start.tzinfo is None:
+                    start = start.replace(tzinfo=local_tz)
+
+                if end.tzinfo is None:
+                    end = end.replace(tzinfo=local_tz)
+
+                if start <= now < end:
+                    current_price = entry["integrated"][0]["value"]
+                    break
+
+            except (KeyError, IndexError, ValueError) as err:
+                _LOGGER.debug(
+                    "Invalid CKW price entry: %s",
+                    err,
+                )
+
+        self._attr_native_value = (
+            round(current_price, 4)
+            if current_price is not None
+            else None
+        )
+
+        self.async_write_ha_state()
+
     @property
     def unique_id(self) -> str:
-        """Return unique id."""
         return f"{self.entry.entry_id}_current_price"
 
     @property
     def name(self) -> str:
-        """Return the name of the sensor."""
         return "CKW Current Price"
 
     @property
-    def native_value(self) -> float:
-        """Return the state of the sensor."""
-        if not self.coordinator.data:
-            return 0
-        prices_raw = self.coordinator.data.get("prices", [])
-        now = datetime.now(tz=timezone.utc)
-        for entry in prices_raw:
-            try:
-                start = datetime.fromisoformat(entry["start_timestamp"])
-                end = datetime.fromisoformat(entry["end_timestamp"])
-                if start <= now < end:
-                    return round(entry["integrated"][0]["value"], 4)
-            except (KeyError, IndexError, ValueError):
-                continue
-        return 0
-
-    @property
     def native_unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
         return "CHF/kWh"
 
     @property
     def icon(self) -> str:
-        """Return the icon."""
         return "mdi:lightning-bolt"
 
     @property
-    def state_class(self) -> SensorStateClass:
-        """Return the state class."""
+    def state_class(self):
         return SensorStateClass.MEASUREMENT
 
 
@@ -95,30 +167,26 @@ class CKWMinPriceSensor(CKWPriceSensorBase):
     """Sensor for minimum CKW price."""
 
     @property
-    def unique_id(self) -> str:
-        """Return unique id."""
+    def unique_id(self):
         return f"{self.entry.entry_id}_min_price"
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
+    def name(self):
         return "CKW Min Price"
 
     @property
-    def native_value(self) -> float:
-        """Return the state of the sensor."""
+    def native_value(self):
         if self.coordinator.data:
-            return round(self.coordinator.data.get("min_price", 0) / 100, 4)
+            return self.coordinator.data.get("min_price", 0)
+
         return 0
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
+    def native_unit_of_measurement(self):
         return "CHF/kWh"
 
     @property
-    def icon(self) -> str:
-        """Return the icon."""
+    def icon(self):
         return "mdi:arrow-down"
 
 
@@ -126,30 +194,26 @@ class CKWMaxPriceSensor(CKWPriceSensorBase):
     """Sensor for maximum CKW price."""
 
     @property
-    def unique_id(self) -> str:
-        """Return unique id."""
+    def unique_id(self):
         return f"{self.entry.entry_id}_max_price"
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
+    def name(self):
         return "CKW Max Price"
 
     @property
-    def native_value(self) -> float:
-        """Return the state of the sensor."""
+    def native_value(self):
         if self.coordinator.data:
-            return round(self.coordinator.data.get("max_price", 0) / 100, 4)
+            return self.coordinator.data.get("max_price", 0)
+
         return 0
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
+    def native_unit_of_measurement(self):
         return "CHF/kWh"
 
     @property
-    def icon(self) -> str:
-        """Return the icon."""
+    def icon(self):
         return "mdi:arrow-up"
 
 
@@ -157,72 +221,78 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
     """Sensor for average CKW price."""
 
     @property
-    def unique_id(self) -> str:
-        """Return unique id."""
+    def unique_id(self):
         return f"{self.entry.entry_id}_avg_price"
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
+    def name(self):
         return "CKW Avg Price"
 
     @property
-    def native_value(self) -> float:
-        """Return the state of the sensor."""
+    def native_value(self):
         if self.coordinator.data:
-            return round(self.coordinator.data.get("avg_price", 0) / 100, 4)
+            return self.coordinator.data.get("avg_price", 0)
+
         return 0
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
+    def native_unit_of_measurement(self):
         return "CHF/kWh"
 
     @property
-    def icon(self) -> str:
-        """Return the icon."""
+    def icon(self):
         return "mdi:chart-line"
 
 
 class CKWAllPricesSensor(CKWPriceSensorBase):
-    """Sensor for all CKW prices of the day."""
+    """Sensor for all CKW prices."""
 
     @property
-    def unique_id(self) -> str:
+    def unique_id(self):
         return f"{self.entry.entry_id}_all_prices"
 
     @property
-    def name(self) -> str:
+    def name(self):
         return "CKW All Prices"
 
     @property
-    def native_value(self) -> int:
-        """Return number of price entries."""
+    def native_value(self):
         if self.coordinator.data:
             return len(self.coordinator.data.get("prices", []))
+
         return 0
 
     @property
-    def native_unit_of_measurement(self) -> str:
+    def native_unit_of_measurement(self):
         return "Einträge"
 
     @property
-    def icon(self) -> str:
+    def icon(self):
         return "mdi:format-list-bulleted"
 
     @property
-    def extra_state_attributes(self) -> dict:
+    def extra_state_attributes(self):
         if not self.coordinator.data:
             return {}
-        prices = self.coordinator.data.get("prices", [])
+
         formatted = []
-        for entry in prices:
+
+        for entry in self.coordinator.data.get("prices", []):
             try:
-                formatted.append({
-                    "start": entry["start_timestamp"],
-                    "end": entry["end_timestamp"],
-                    "price": round(entry["integrated"][0]["value"], 4),
-                })
+                formatted.append(
+                    {
+                        "start": entry["start_timestamp"],
+                        "end": entry["end_timestamp"],
+                        "price": round(
+                            entry["integrated"][0]["value"],
+                            4,
+                        ),
+                    }
+                )
+
             except (KeyError, IndexError):
                 continue
-        return {"prices": formatted}
+
+        return {
+            "prices": formatted
+        }
