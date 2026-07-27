@@ -9,7 +9,7 @@ Integration für dynamische Strompreise von CKW zur ISG Wärmepumpen-Steuerung.
 
 1. HACS öffnen → Integrationen
 2. 3 Punkte → Custom repositories
-3. URL eingeben: `https://github.com/trolli-ch/hass-ckw-dynamic-pricing`
+3. URL eingeben: `https://github.com/PJayLab/hass-ckw-dynamic-pricing`
 4. Kategorie: Integration
 5. "Erstellen"
 6. Nach "CKW Dynamic Pricing" suchen und installieren
