@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers import entity_registry as er
 
 from . import CKWPricingCoordinator, DOMAIN
 
@@ -47,11 +48,19 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return True if price is below threshold."""
-        if self.coordinator.data:
-            current_price = self.coordinator.data.get("current_price", 0)
-            threshold = self.coordinator.data.get("threshold", 10)
-            return current_price < threshold
-        return False
+
+        if not self.coordinator.data:
+            return False
+
+        state = self.hass.states.get("sensor.ckw_current_price")
+
+        if state is None or state.state in ("unknown", "unavailable"):
+            return False
+
+        current_price = float(state.state)
+        threshold = float(self.coordinator.data.get("threshold", 0.10))
+
+        return current_price < threshold
 
     @property
     def icon(self) -> str:
@@ -60,13 +69,12 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Return extra state attributes."""
-        if self.coordinator.data:
-            return {
-                "current_price": self.coordinator.data.get("current_price", 0),
-                "threshold": self.coordinator.data.get("threshold", 10),
-            }
-        return {}
+        state = self.hass.states.get("sensor.ckw_current_price")
+
+        return {
+            "current_price": state.state if state else None,
+            "threshold": self.coordinator.data.get("threshold", 0.10),
+        }
 
     @property
     def available(self) -> bool:

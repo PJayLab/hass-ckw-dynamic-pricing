@@ -13,7 +13,7 @@ DOMAIN = "ckw_dynamic_pricing"
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required("price_threshold", default=10): vol.All(
+        vol.Required("price_threshold", default=0.10): vol.All(
             vol.Coerce(float), vol.Range(min=0, max=100)
         ),
         vol.Required("netzebene", default="N1"): vol.In(["N1", "N2", "N3"]),
@@ -72,7 +72,7 @@ class CKWOptionsFlow(OptionsFlow):
         # Verwende self.config_entry direkt (read-only Property) und self.options
         default_price = self.config_entry.options.get(
             "price_threshold",
-            self.config_entry.data.get("price_threshold", 10)
+            self.config_entry.data.get("price_threshold", 0.10)
         )
 
         return self.async_show_form(
