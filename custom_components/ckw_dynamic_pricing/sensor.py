@@ -92,7 +92,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
 
     async def _update_current_price(self, now):
         """Calculate current price from cached API data."""
-
+        _LOGGER.debug("Current price update triggered at %s", dt_util.now())
         if not self.coordinator.data:
             self._attr_native_value = None
             self.async_write_ha_state()
