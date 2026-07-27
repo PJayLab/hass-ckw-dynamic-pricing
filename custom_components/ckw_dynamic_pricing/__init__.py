@@ -106,29 +106,16 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(self, prices_today: list, prices_all: list, threshold: float = 10) -> Dict[str, Any]:
+    def _process_data(
+        self,
+        prices_today: list,
+        prices_all: list,
+        threshold: float = 10,
+    ) -> Dict[str, Any]:
         """Process API data."""
+
         if not prices_today:
             return {}
-
-        now = dt_util.now()
-
-        current_price = 0.0
-        for entry in prices_today:
-            try:
-                start = datetime.fromisoformat(entry["start_timestamp"])
-                end = datetime.fromisoformat(entry["end_timestamp"])
-
-                if start.tzinfo is None:
-                    start = start.replace(tzinfo=dt_util.now())
-                if end.tzinfo is None:
-                    end = end.replace(tzinfo=dt_util.now())
-
-                if start <= now < end:
-                    current_price = entry["integrated"][0]["value"]
-                    break
-            except (KeyError, IndexError, ValueError):
-                continue
 
         today_prices = [
             entry["integrated"][0]["value"]
@@ -140,10 +127,9 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("No price data found in API response")
 
         return {
-            "current_price": round(current_price * 100, 4),
-            "min_price": round(min(today_prices) * 100, 4),
-            "max_price": round(max(today_prices) * 100, 4),
-            "avg_price": round(sum(today_prices) / len(today_prices) * 100, 4),
+            "min_price": round(min(today_prices), 4),
+            "max_price": round(max(today_prices), 4),
+            "avg_price": round(sum(today_prices) / len(today_prices), 4),
             "threshold": threshold,
             "prices": prices_all,
         }
