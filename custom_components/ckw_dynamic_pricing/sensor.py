@@ -80,7 +80,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
         )
 
         # Initial update
-        self._update_current_price(None)
+        await self._update_current_price(None)
 
     async def async_will_remove_from_hass(self):
         """Cleanup."""
@@ -90,7 +90,7 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
 
         await super().async_will_remove_from_hass()
 
-    def _update_current_price(self, now):
+    async def _update_current_price(self, now):
         """Calculate current price from cached API data."""
 
         if not self.coordinator.data:
