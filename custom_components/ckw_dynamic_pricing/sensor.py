@@ -1,265 +1,122 @@
 """Sensor platform for CKW Dynamic Pricing."""
-import logging
-from datetime import datetime
+from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from dataclasses import dataclass
+from typing import Any, Callable
+
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
-from homeassistant.util import dt as dt_util
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import CKWPricingCoordinator, DOMAIN
+from . import CKWPricingCoordinator
+from .const import DOMAIN
+from .price import get_all_prices, get_current_price
 
-_LOGGER = logging.getLogger(__name__)
+
+@dataclass(frozen=True, kw_only=True)
+class CKWPriceSensorEntityDescription(SensorEntityDescription):
+    """Describe CKW price sensors."""
+
+    value_fn: Callable[[dict[str, Any]], Any]
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
+SENSOR_DESCRIPTIONS = (
+    CKWPriceSensorEntityDescription(
+        key="current_price",
+        translation_key="current_price",
+        native_unit_of_measurement="CHF/kWh",
+        icon="mdi:lightning-bolt",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.get("current_price"),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="min_price",
+        translation_key="min_price",
+        native_unit_of_measurement="CHF/kWh",
+        icon="mdi:arrow-down",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.get("min_price"),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="max_price",
+        translation_key="max_price",
+        native_unit_of_measurement="CHF/kWh",
+        icon="mdi:arrow-up",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.get("max_price"),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="avg_price",
+        translation_key="avg_price",
+        native_unit_of_measurement="CHF/kWh",
+        icon="mdi:chart-line",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.get("avg_price"),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="all_prices",
+        translation_key="all_prices",
+        icon="mdi:format-list-bulleted",
+        value_fn=lambda data: len(data.get("prices", [])),
+    ),
+)
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up sensor platform."""
-
     coordinator: CKWPricingCoordinator = hass.data[DOMAIN][entry.entry_id]
-
-    entities = [
-        CKWCurrentPriceSensor(coordinator, entry),
-        CKWMinPriceSensor(coordinator, entry),
-        CKWMaxPriceSensor(coordinator, entry),
-        CKWAvgPriceSensor(coordinator, entry),
-        CKWAllPricesSensor(coordinator, entry),
-    ]
-
-    async_add_entities(entities)
+    async_add_entities(CKWPriceSensor(coordinator, entry, description) for description in SENSOR_DESCRIPTIONS)
 
 
-class CKWPriceSensorBase(CoordinatorEntity, SensorEntity):
-    """Base class for CKW price sensors."""
+class CKWPriceSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for CKW price data."""
 
     _attr_has_entity_name = True
 
-    def __init__(
-        self,
-        coordinator: CKWPricingCoordinator,
-        entry: ConfigEntry,
-    ) -> None:
+    def __init__(self, coordinator: CKWPricingCoordinator, entry: ConfigEntry, description: CKWPriceSensorEntityDescription) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
-
-        self.entry = entry
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title,
-            manufacturer="CKW",
-            model="Dynamic Pricing",
-        )
-
-
-class CKWCurrentPriceSensor(CKWPriceSensorBase):
-    """Sensor for current CKW price."""
-
-    def __init__(   
-            self,
-            coordinator: CKWPricingCoordinator,
-            entry: ConfigEntry,
-        ) -> None:
-        super().__init__(coordinator, entry)
-
-        self._attr_native_value = None
+        self.entity_description = description
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self._remove_listener = None
-        self._attr_unique_id = f"{entry.entry_id}_current_price"
-        self._attr_name = "Current price"
-        self._attr_native_unit_of_measurement = "CHF/kWh"
-        self._attr_icon = "mdi:lightning-bolt"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name=entry.title, manufacturer="CKW", model="Dynamic Pricing")
 
-    async def async_added_to_hass(self):
-        """Register quarter-hour updates."""
-
+    async def async_added_to_hass(self) -> None:
+        """Register quarter-hour state refreshes for time-dependent prices."""
         await super().async_added_to_hass()
-
         self._remove_listener = async_track_time_change(
             self.hass,
-            self._update_current_price,
+            self._handle_time_change,
             minute=(0, 15, 30, 45),
             second=5,
         )
 
-        # Initial update
-        await self._update_current_price(None)
-
-    async def async_will_remove_from_hass(self):
-        """Cleanup."""
-
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove registered listeners."""
         if self._remove_listener:
             self._remove_listener()
-
         await super().async_will_remove_from_hass()
 
-    async def _update_current_price(self, now):
-        """Calculate current price from cached API data."""
-        _LOGGER.debug("Current price update triggered at %s", dt_util.now())
-        if not self.coordinator.data:
-            self._attr_native_value = None
-            self.async_write_ha_state()
-            return
-
-        prices = self.coordinator.data.get("prices", [])
-
-        current_price = None
-        now = dt_util.now()
-
-        local_tz = dt_util.get_time_zone(
-            self.hass.config.time_zone
-        )
-
-        for entry in prices:
-            try:
-                start = datetime.fromisoformat(
-                    entry["start_timestamp"]
-                )
-
-                end = datetime.fromisoformat(
-                    entry["end_timestamp"]
-                )
-
-                # Handle timestamps without timezone
-                if start.tzinfo is None:
-                    start = start.replace(tzinfo=local_tz)
-
-                if end.tzinfo is None:
-                    end = end.replace(tzinfo=local_tz)
-
-                if start <= now < end:
-                    current_price = entry["integrated"][0]["value"]
-                    break
-
-            except (KeyError, IndexError, ValueError) as err:
-                _LOGGER.warning(
-                    "Invalid CKW price entry: %s",
-                    err,
-                )
-
-        self._attr_native_value = (
-            round(current_price, 4)
-            if current_price is not None
-            else None
-        )
-
+    async def _handle_time_change(self, now) -> None:
+        """Refresh entity states when CKW price slots change."""
         self.async_write_ha_state()
 
-
-class CKWMinPriceSensor(CKWPriceSensorBase):
-    """Sensor for minimum CKW price."""
-
-    def __init__(   
-            self,
-            coordinator: CKWPricingCoordinator,
-            entry: ConfigEntry,
-        ) -> None:
-        super().__init__(coordinator, entry)
-
-        self._attr_unique_id = f"{entry.entry_id}_min_price"
-        self._attr_name = "Minimum price"
-        self._attr_native_unit_of_measurement = "CHF/kWh"
-        self._attr_icon = "mdi:arrow-down"
-
     @property
     def native_value(self):
-        if self.coordinator.data:
+        """Return the native sensor value."""
+        if not self.coordinator.data:
             return None
-        return self.coordinator.data.get("min_price")
-
-
-class CKWMaxPriceSensor(CKWPriceSensorBase):
-    """Sensor for maximum CKW price."""
-
-    def __init__(   
-            self,
-            coordinator: CKWPricingCoordinator,
-            entry: ConfigEntry,
-        ) -> None:
-        super().__init__(coordinator, entry)
-
-        self._attr_unique_id = f"{entry.entry_id}_max_price"
-        self._attr_name = "Maximum price"
-        self._attr_native_unit_of_measurement = "CHF/kWh"
-        self._attr_icon = "mdi:arrow-up"
-
-    @property
-    def native_value(self):
-        if self.coordinator.data:
-            return None
-        return self.coordinator.data.get("max_price")
-
-
-class CKWAvgPriceSensor(CKWPriceSensorBase):
-    """Sensor for average CKW price."""
-
-    def __init__(self, coordinator, entry):
-        super().__init__(coordinator, entry)
-
-        self._attr_unique_id = f"{entry.entry_id}_avg_price"
-        self._attr_name = "Average price"
-        self._attr_native_unit_of_measurement = "CHF/kWh"
-        self._attr_icon = "mdi:chart-line"
-
-    @property
-    def native_value(self):
-        if self.coordinator.data:
-            return None
-        return self.coordinator.data.get("avg_price")
-
-
-class CKWAllPricesSensor(CKWPriceSensorBase):
-    """Sensor for all CKW prices."""
-
-    def __init__(   
-            self,
-            coordinator: CKWPricingCoordinator,
-            entry: ConfigEntry,
-        ) -> None:
-        super().__init__(coordinator, entry)
-
-        self._attr_unique_id = f"{entry.entry_id}_all_prices"
-        self._attr_name = "All prices"
-        self._attr_native_unit_of_measurement = "Einträge"
-        self._attr_icon = "mdi:format-list-bulleted"
-
-    @property
-    def native_value(self):
-        if self.coordinator.data:
-            return len(self.coordinator.data.get("prices", []))
-
-        return None
-
+        if self.entity_description.key == "current_price":
+            return get_current_price(self.coordinator.data.get("prices", []))
+        return self.entity_description.value_fn(self.coordinator.data)
 
     @property
     def extra_state_attributes(self):
-        if not self.coordinator.data:
+        """Return extra state attributes."""
+        if not self.coordinator.data or self.entity_description.key != "all_prices":
             return {}
-
-        formatted = []
-
-        for entry in self.coordinator.data.get("prices", []):
-            try:
-                formatted.append(
-                    {
-                        "start": entry["start_timestamp"],
-                        "end": entry["end_timestamp"],
-                        "price": round(
-                            entry["integrated"][0]["value"],
-                            4,
-                        ),
-                    }
-                )
-
-            except (KeyError, IndexError):
-                continue
-
-        return {
-            "prices": formatted
-        }
+        return {"prices": get_all_prices(self.coordinator.data.get("prices", []))}
