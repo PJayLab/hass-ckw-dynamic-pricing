@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers import entity_registry as er
 
 from . import CKWPricingCoordinator, DOMAIN
@@ -27,23 +28,40 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Binary sensor for CKW price below threshold."""
+class CKWBinarySensorBase(CoordinatorEntity, BinarySensorEntity):
+    """Base class for CKW binary sensors."""
 
-    def __init__(self, coordinator: CKWPricingCoordinator, entry: ConfigEntry) -> None:
-        """Initialize the binary sensor."""
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: CKWPricingCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
         super().__init__(coordinator)
+
         self.entry = entry
 
-    @property
-    def unique_id(self) -> str:
-        """Return unique id."""
-        return f"{self.entry.entry_id}_below_threshold"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.title,
+            manufacturer="CKW",
+            model="Dynamic Pricing",
+        )
 
-    @property
-    def name(self) -> str:
-        """Return the name of the binary sensor."""
-        return "CKW Below Threshold"
+class CKWBelowThresholdBinarySensor(CKWBinarySensorBase):
+    """Binary sensor for CKW price below threshold."""
+
+    def __init__(
+        self,
+        coordinator: CKWPricingCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        super().__init__(coordinator, entry)
+
+        self._attr_unique_id = f"{entry.entry_id}_below_threshold"
+        self._attr_name = "Below threshold"
+        self._attr_icon = "mdi:close-circle"
 
     @property
     def is_on(self) -> bool:
@@ -62,10 +80,6 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
         return current_price < threshold
 
-    @property
-    def icon(self) -> str:
-        """Return the icon."""
-        return "mdi:check-circle" if self.is_on else "mdi:close-circle"
 
     @property
     def extra_state_attributes(self) -> dict:
