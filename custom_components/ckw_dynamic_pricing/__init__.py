@@ -1,7 +1,9 @@
 """CKW Dynamic Pricing Integration for Home Assistant."""
+from __future__ import annotations
+
 import logging
-from datetime import datetime, timedelta, time
-from typing import Any, Dict
+from datetime import datetime, time, timedelta
+from typing import Any
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -9,21 +11,41 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-_LOGGER = logging.getLogger(__name__)
+from .const import (
+    CONF_API_URL,
+    CONF_HIGH_PRICE_THRESHOLD,
+    CONF_LOW_PRICE_THRESHOLD,
+    CONF_TARIFF_NAME,
+    CONF_TARIFF_TYPE,
+    DEFAULT_API_URL,
+    DEFAULT_HIGH_PRICE_THRESHOLD,
+    DEFAULT_LOW_PRICE_THRESHOLD,
+    DEFAULT_TARIFF_NAME,
+    DEFAULT_TARIFF_TYPE,
+    DOMAIN,
+    LEGACY_CONF_PRICE_THRESHOLD,
+    PLATFORMS,
+    SCAN_INTERVAL,
+)
+from .price import get_average_price, get_current_price, get_max_price, get_min_price
 
-DOMAIN = "ckw_dynamic_pricing"
-PLATFORMS = ["sensor", "binary_sensor"]
-SCAN_INTERVAL = timedelta(hours=6)
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up CKW Dynamic Pricing from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-    coordinator = CKWPricingCoordinator(hass, entry.data)
+    coordinator = CKWPricingCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
     return True
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the integration when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -37,7 +59,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 class CKWPricingCoordinator(DataUpdateCoordinator):
     """Coordinator for CKW pricing data."""
 
-    def __init__(self, hass: HomeAssistant, config: Dict[str, Any]) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
@@ -45,33 +67,27 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
             update_interval=SCAN_INTERVAL,
         )
-        self.config = config
-        self.api_url = "https://e-ckw-public-data.de-c1.eu1.cloudhub.io/api/v1/netzinformationen/energie/dynamische-preise"
+        self.entry = entry
+
+    @property
+    def config(self) -> dict[str, Any]:
+        """Return merged entry data and options."""
+        return {**self.entry.data, **self.entry.options}
 
     async def _fetch_day(self, session: aiohttp.ClientSession, date) -> list:
         """Fetch prices for a specific date."""
         local_tz = dt_util.get_time_zone(self.hass.config.time_zone)
-
-        start = datetime.combine(
-            date,
-            time.min,
-            tzinfo=local_tz,
-        ).isoformat()
-
-        end = datetime.combine(
-            date,
-            time.max,
-            tzinfo=local_tz,
-        ).isoformat()
+        start = datetime.combine(date, time.min, tzinfo=local_tz).isoformat()
+        end = datetime.combine(date, time.max, tzinfo=local_tz).isoformat()
         params = {
-            "tariff_name": self.config.get("tariff_name", "home_dynamic"),
+            CONF_TARIFF_NAME: self.config.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAME),
             "start_timestamp": start,
             "end_timestamp": end,
-            "tariff_type": "integrated",
+            CONF_TARIFF_TYPE: self.config.get(CONF_TARIFF_TYPE, DEFAULT_TARIFF_TYPE),
         }
         try:
             async with session.get(
-                self.api_url,
+                self.config.get(CONF_API_URL, DEFAULT_API_URL),
                 params=params,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:
@@ -84,11 +100,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             _LOGGER.warning("Error fetching CKW data for date %s: %s", date, err)
             return []
 
-    async def _async_update_data(self) -> Dict[str, Any]:
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from CKW API for today and tomorrow."""
-        threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
-        threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
-
         today = dt_util.now().date()
         tomorrow = today + timedelta(days=1)
 
@@ -101,35 +114,35 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("No price data received from CKW API for today")
 
             combined = prices_today + prices_tomorrow
-            return self._process_data(prices_today, combined, threshold)
+            return self._process_data(prices_today, combined)
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(
-        self,
-        prices_today: list,
-        prices_all: list,
-        threshold: float = 10,
-    ) -> Dict[str, Any]:
+    def _process_data(self, prices_today: list, prices_all: list) -> dict[str, Any]:
         """Process API data."""
+        min_price = get_min_price(prices_today)
+        max_price = get_max_price(prices_today)
+        avg_price = get_average_price(prices_today)
 
-        if not prices_today:
-            return {}
-
-        today_prices = [
-            entry["integrated"][0]["value"]
-            for entry in prices_today
-            if "integrated" in entry and entry["integrated"]
-        ]
-
-        if not today_prices:
+        if min_price is None or max_price is None or avg_price is None:
             raise UpdateFailed("No price data found in API response")
 
+        low_threshold = self.config.get(
+            CONF_LOW_PRICE_THRESHOLD,
+            self.config.get(LEGACY_CONF_PRICE_THRESHOLD, DEFAULT_LOW_PRICE_THRESHOLD),
+        )
+        high_threshold = self.config.get(
+            CONF_HIGH_PRICE_THRESHOLD,
+            DEFAULT_HIGH_PRICE_THRESHOLD,
+        )
+
         return {
-            "min_price": round(min(today_prices), 4),
-            "max_price": round(max(today_prices), 4),
-            "avg_price": round(sum(today_prices) / len(today_prices), 4),
-            "threshold": threshold,
+            "current_price": get_current_price(prices_all),
+            "min_price": min_price,
+            "max_price": max_price,
+            "avg_price": avg_price,
+            "low_price_threshold": float(low_threshold),
+            "high_price_threshold": float(high_threshold),
             "prices": prices_all,
         }

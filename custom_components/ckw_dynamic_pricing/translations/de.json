@@ -3,15 +3,42 @@
     "step": {
       "user": {
         "title": "CKW Dynamische Strompreise Setup",
-        "description": "Konfiguriere die CKW Dynamic Pricing Integration",
+        "description": "Konfiguriere die CKW Dynamic Pricing Integration. Die Datumsparameter der URL werden automatisch berechnet.",
         "data": {
-          "price_threshold": "Preisschwelle (CHF/kWh)",
-          "netzebene": "Netzebene"
+          "api_url": "API-URL",
+          "tariff_name": "Tarifname",
+          "tariff_type": "Tariftyp",
+          "low_price_threshold": "Untere Preisschwelle (CHF/kWh)",
+          "high_price_threshold": "Obere Preisschwelle (CHF/kWh)"
+        }
+      },
+      "init": {
+        "title": "CKW Dynamische Strompreise Optionen",
+        "description": "Aktualisiere CKW API-URL-Parameter und Schwellenwerte. Die Datumsparameter der URL werden automatisch berechnet.",
+        "data": {
+          "api_url": "API-URL",
+          "tariff_name": "Tarifname",
+          "tariff_type": "Tariftyp",
+          "low_price_threshold": "Untere Preisschwelle (CHF/kWh)",
+          "high_price_threshold": "Obere Preisschwelle (CHF/kWh)"
         }
       }
     },
     "error": {
       "unknown": "Ein unbekannter Fehler ist aufgetreten"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Aktueller Preis"},
+      "min_price": {"name": "Minimaler Preis"},
+      "max_price": {"name": "Maximaler Preis"},
+      "avg_price": {"name": "Durchschnittspreis"},
+      "all_prices": {"name": "Alle Preise"}
+    },
+    "binary_sensor": {
+      "below_low_price_threshold": {"name": "Unter unterer Preisschwelle"},
+      "above_high_price_threshold": {"name": "Über oberer Preisschwelle"}
     }
   }
 }
