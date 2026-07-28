@@ -17,7 +17,7 @@ from .const import (
     DEFAULT_API_URL,
     DEFAULT_HIGH_PRICE_THRESHOLD,
     DEFAULT_LOW_PRICE_THRESHOLD,
-    DEFAULT_TARIFF_NAME,
+    DEFAULT_TARIFF_NAMES,
     DEFAULT_TARIFF_TYPE,
     DOMAIN,
     LEGACY_CONF_PRICE_THRESHOLD,
@@ -36,8 +36,8 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             ): str,
             vol.Required(
                 CONF_TARIFF_NAME,
-                default=defaults.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAME),
-            ): str,
+                default=defaults.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAMES),
+            ): vol.In(DEFAULT_TARIFF_NAMES),
             vol.Required(
                 CONF_TARIFF_TYPE,
                 default=defaults.get(CONF_TARIFF_TYPE, DEFAULT_TARIFF_TYPE),
