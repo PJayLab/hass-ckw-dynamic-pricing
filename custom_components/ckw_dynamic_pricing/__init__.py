@@ -20,7 +20,7 @@ from .const import (
     DEFAULT_API_URL,
     DEFAULT_HIGH_PRICE_THRESHOLD,
     DEFAULT_LOW_PRICE_THRESHOLD,
-    DEFAULT_TARIFF_NAME,
+    DEFAULT_TARIFF_NAMES,
     DEFAULT_TARIFF_TYPE,
     DOMAIN,
     LEGACY_CONF_PRICE_THRESHOLD,
@@ -80,7 +80,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         start = datetime.combine(date, time.min, tzinfo=local_tz).isoformat()
         end = datetime.combine(date, time.max, tzinfo=local_tz).isoformat()
         params = {
-            CONF_TARIFF_NAME: self.config.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAME),
+            CONF_TARIFF_NAME: self.config.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAMES[0]),
             "start_timestamp": start,
             "end_timestamp": end,
             CONF_TARIFF_TYPE: self.config.get(CONF_TARIFF_TYPE, DEFAULT_TARIFF_TYPE),

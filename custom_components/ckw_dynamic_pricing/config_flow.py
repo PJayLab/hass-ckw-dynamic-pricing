@@ -36,7 +36,7 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             ): str,
             vol.Required(
                 CONF_TARIFF_NAME,
-                default=defaults.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAMES),
+                default=defaults.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAMES[0]),
             ): vol.In(DEFAULT_TARIFF_NAMES),
             vol.Required(
                 CONF_TARIFF_TYPE,
