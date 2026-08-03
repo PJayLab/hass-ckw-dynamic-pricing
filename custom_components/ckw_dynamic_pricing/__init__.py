@@ -9,6 +9,7 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -52,6 +53,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
+        coordinator: CKWPricingCoordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator.async_shutdown()
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
 
@@ -68,6 +71,28 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self.entry = entry
+        self._remove_midnight_listener = async_track_time_change(
+            hass, self._async_midnight_refresh, hour=0, minute=0, second=5
+        )
+
+    async def _async_midnight_refresh(self, now: datetime) -> None:
+        """Refresh daily statistics immediately after the local date changes.
+
+        Tomorrow's schedule was already fetched during the regular six-hour
+        poll, so promote it locally instead of making an additional API call.
+        This prevents yesterday's min/max/average remaining visible after
+        midnight while preserving the regular polling cadence.
+        """
+        if not self.data or not self.data.get("prices_tomorrow"):
+            return
+        prices_today = self.data["prices_tomorrow"]
+        self.async_set_updated_data(
+            self._process_data(prices_today, [], prices_today)
+        )
+
+    def async_shutdown(self) -> None:
+        """Remove the scheduled midnight refresh listener."""
+        self._remove_midnight_listener()
 
     @property
     def config(self) -> dict[str, Any]:
@@ -83,7 +108,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             CONF_TARIFF_NAME: self.config.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAMES[0]),
             "start_timestamp": start,
             "end_timestamp": end,
-            CONF_TARIFF_TYPE: self.config.get(CONF_TARIFF_TYPE, DEFAULT_TARIFF_TYPE),
+            CONF_TARIFF_TYPE: DEFAULT_TARIFF_TYPE,
         }
         try:
             async with session.get(
@@ -114,12 +139,14 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("No price data received from CKW API for today")
 
             combined = prices_today + prices_tomorrow
-            return self._process_data(prices_today, combined)
+            return self._process_data(prices_today, prices_tomorrow, combined)
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(self, prices_today: list, prices_all: list) -> dict[str, Any]:
+    def _process_data(
+        self, prices_today: list, prices_tomorrow: list, prices_all: list
+    ) -> dict[str, Any]:
         """Process API data."""
         min_price = get_min_price(prices_today)
         max_price = get_max_price(prices_today)
@@ -145,4 +172,6 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             "low_price_threshold": float(low_threshold),
             "high_price_threshold": float(high_threshold),
             "prices": prices_all,
+            "prices_today": prices_today,
+            "prices_tomorrow": prices_tomorrow,
         }

@@ -3,22 +3,18 @@
     "step": {
       "user": {
         "title": "CKW Dynamic Pricing setup",
-        "description": "Configure the CKW Dynamic Pricing integration. URL date parameters are calculated automatically.",
+        "description": "Choose your CKW tariff and price thresholds. The official CKW API and all-inclusive tariff are managed automatically.",
         "data": {
-          "api_url": "API URL",
           "tariff_name": "Tariff name",
-          "tariff_type": "Tariff type",
           "low_price_threshold": "Low price threshold (CHF/kWh)",
           "high_price_threshold": "High price threshold (CHF/kWh)"
         }
       },
       "init": {
         "title": "CKW Dynamic Pricing options",
-        "description": "Update CKW API URL parameters and threshold values. URL date parameters are calculated automatically.",
+        "description": "Update the tariff and price thresholds. The official CKW API and all-inclusive tariff are managed automatically.",
         "data": {
-          "api_url": "API URL",
           "tariff_name": "Tariff name",
-          "tariff_type": "Tariff type",
           "low_price_threshold": "Low price threshold (CHF/kWh)",
           "high_price_threshold": "High price threshold (CHF/kWh)"
         }
@@ -31,6 +27,17 @@
   "entity": {
     "sensor": {
       "current_price": {"name": "Current price"},
+      "next_change": {"name": "Next price change"},
+      "average_price_today": {"name": "Average price today"},
+      "average_price_tomorrow": {"name": "Average price tomorrow"},
+      "lowest_2h_window_today": {"name": "Lowest 2-hour window today"},
+      "lowest_4h_window_today": {"name": "Lowest 4-hour window today"},
+      "highest_2h_window_today": {"name": "Highest 2-hour window today"},
+      "highest_4h_window_today": {"name": "Highest 4-hour window today"},
+      "lowest_2h_window_tomorrow": {"name": "Lowest 2-hour window tomorrow"},
+      "lowest_4h_window_tomorrow": {"name": "Lowest 4-hour window tomorrow"},
+      "highest_2h_window_tomorrow": {"name": "Highest 2-hour window tomorrow"},
+      "highest_4h_window_tomorrow": {"name": "Highest 4-hour window tomorrow"},
       "min_price": {"name": "Minimum price"},
       "max_price": {"name": "Maximum price"},
       "avg_price": {"name": "Average price"},
@@ -38,7 +45,17 @@
     },
     "binary_sensor": {
       "below_low_price_threshold": {"name": "Below low price threshold"},
-      "above_high_price_threshold": {"name": "Above high price threshold"}
+      "above_high_price_threshold": {"name": "Above high price threshold"},
+      "cheapest_10_percent_hours_today": {"name": "Cheapest 10% price slots today"},
+      "cheapest_25_percent_hours_today": {"name": "Cheapest 25% price slots today"},
+      "cheapest_50_percent_hours_today": {"name": "Cheapest 50% price slots today"},
+      "most_expensive_10_percent_hours_today": {"name": "Most expensive 10% price slots today"},
+      "most_expensive_25_percent_hours_today": {"name": "Most expensive 25% price slots today"},
+      "most_expensive_50_percent_hours_today": {"name": "Most expensive 50% price slots today"},
+      "in_lowest_2h_window_today": {"name": "In lowest 2-hour window today"},
+      "in_lowest_4h_window_today": {"name": "In lowest 4-hour window today"},
+      "in_highest_2h_window_today": {"name": "In highest 2-hour window today"},
+      "in_highest_4h_window_today": {"name": "In highest 4-hour window today"}
     }
   }
 }

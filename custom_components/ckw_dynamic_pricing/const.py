@@ -15,6 +15,9 @@ DEFAULT_TARIFF_TYPE = "integrated"
 DEFAULT_LOW_PRICE_THRESHOLD = 0.15
 DEFAULT_HIGH_PRICE_THRESHOLD = 0.25
 
+# Kept for backwards compatibility with existing config entries.  These fields are
+# deliberately no longer presented in the UI: CKW's public endpoint and the
+# all-inclusive ("integrated") price are now always used.
 CONF_API_URL = "api_url"
 CONF_TARIFF_NAME = "tariff_name"
 CONF_TARIFF_TYPE = "tariff_type"

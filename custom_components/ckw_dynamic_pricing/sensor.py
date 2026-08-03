@@ -4,7 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -14,7 +19,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import CKWPricingCoordinator
 from .const import DOMAIN
-from .price import get_all_prices, get_current_price
+from .price import (
+    get_all_prices,
+    get_current_price,
+    get_daily_statistics,
+    get_extreme_window,
+    get_next_change,
+)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -32,6 +43,46 @@ SENSOR_DESCRIPTIONS = (
         icon="mdi:lightning-bolt",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.get("current_price"),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="next_change",
+        translation_key="next_change",
+        icon="mdi:clock-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: get_next_change(data.get("prices", [])),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="average_price_today",
+        translation_key="average_price_today",
+        native_unit_of_measurement="CHF/kWh",
+        icon="mdi:chart-line",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.get("avg_price"),
+    ),
+    CKWPriceSensorEntityDescription(
+        key="average_price_tomorrow",
+        translation_key="average_price_tomorrow",
+        native_unit_of_measurement="CHF/kWh",
+        icon="mdi:chart-line",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+        value_fn=lambda data: _average(data.get("prices_tomorrow", [])),
+    ),
+    *(
+        CKWPriceSensorEntityDescription(
+            key=f"{edge}_{hours}h_window_{day}",
+            translation_key=f"{edge}_{hours}h_window_{day}",
+            native_unit_of_measurement="CHF/kWh",
+            icon="mdi:calendar-clock",
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            value_fn=lambda data, edge=edge, hours=hours, day=day: _window_value(
+                data.get(f"prices_{day}", []), hours, edge
+            ),
+        )
+        for day in ("today", "tomorrow")
+        for edge in ("lowest", "highest")
+        for hours in (2, 4)
     ),
     CKWPriceSensorEntityDescription(
         key="min_price",
@@ -64,6 +115,21 @@ SENSOR_DESCRIPTIONS = (
         value_fn=lambda data: len(data.get("prices", [])),
     ),
 )
+
+
+def _average(prices: list[dict[str, Any]]) -> float | None:
+    """Get the daily average from a price list."""
+    statistics = get_daily_statistics(prices)
+    if not statistics:
+        return None
+    values = [item["price"] for item in get_all_prices(prices)]
+    return round(sum(values) / len(values), 4) if values else None
+
+
+def _window_value(prices: list[dict[str, Any]], hours: int, edge: str) -> float | None:
+    """Get an extreme window's average price."""
+    window = get_extreme_window(prices, hours, "min" if edge == "lowest" else "max")
+    return window["average"] if window else None
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -117,6 +183,33 @@ class CKWPriceSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return extra state attributes."""
-        if not self.coordinator.data or self.entity_description.key != "all_prices":
+        if not self.coordinator.data:
             return {}
-        return {"prices": get_all_prices(self.coordinator.data.get("prices", []))}
+        key = self.entity_description.key
+        if key == "all_prices":
+            return {"prices": get_all_prices(self.coordinator.data.get("prices", []))}
+        if key in ("average_price_today", "average_price_tomorrow"):
+            day = key.rsplit("_", 1)[1]
+            return {
+                "day": day,
+                **(get_daily_statistics(self.coordinator.data.get(f"prices_{day}", [])) or {}),
+            }
+        if "_window_" in key:
+            edge, remainder = key.split("_", 1)
+            hours = int(remainder.split("h_", 1)[0])
+            day = remainder.rsplit("_", 1)[1]
+            window = get_extreme_window(
+                self.coordinator.data.get(f"prices_{day}", []),
+                hours,
+                "min" if edge == "lowest" else "max",
+            )
+            if not window:
+                return {}
+            return {
+                "window_start": window["start"],
+                "window_end": window["end"],
+                "window_minutes": hours * 60,
+                "mode": window["mode"],
+                "day": day,
+            }
+        return {}

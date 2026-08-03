@@ -17,10 +17,9 @@ Home Assistant custom integration for CKW dynamic electricity prices.
 1. Open Settings → Devices & services.
 2. Select **Add integration**.
 3. Search for **CKW Dynamic Pricing**.
-4. Configure the CKW API URL parameters and thresholds:
-   - API URL
-   - Tariff name
-   - Tariff type
+4. Choose the CKW tariff and configure the price thresholds:
+   - Tariff name (Home or Business Dynamic)
+   - The official CKW public API URL and all-inclusive tariff type are managed by the integration.
    - Low price threshold (CHF/kWh)
    - High price threshold (CHF/kWh)
 
@@ -34,6 +33,12 @@ The integration creates these entities:
 - Minimum price
 - Maximum price
 - Average price
+- Next price change
+- Average price today and tomorrow (with min, max, median, percentiles and coverage attributes)
+- Cheapest and most expensive 2- and 4-hour windows for today and tomorrow (disabled by default)
 - All prices, with the normalized price list as attributes
 - Below low price threshold
 - Above high price threshold
+- Cheapest/most-expensive 10%, 25% and 50% price-slot sensors, plus 2- and 4-hour window-membership sensors (disabled by default)
+
+Daily statistics roll over immediately after local midnight using the already-fetched tomorrow schedule; API polling remains on the normal six-hour interval.

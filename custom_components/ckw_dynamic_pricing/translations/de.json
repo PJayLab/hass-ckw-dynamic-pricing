@@ -3,22 +3,18 @@
     "step": {
       "user": {
         "title": "CKW Dynamische Strompreise Setup",
-        "description": "Konfiguriere die CKW Dynamic Pricing Integration. Die Datumsparameter der URL werden automatisch berechnet.",
+        "description": "Wähle deinen CKW-Tarif und die Preisschwellen. Die offizielle CKW-API und der Kompletttarif werden automatisch verwendet.",
         "data": {
-          "api_url": "API-URL",
           "tariff_name": "Tarifname",
-          "tariff_type": "Tariftyp",
           "low_price_threshold": "Untere Preisschwelle (CHF/kWh)",
           "high_price_threshold": "Obere Preisschwelle (CHF/kWh)"
         }
       },
       "init": {
         "title": "CKW Dynamische Strompreise Optionen",
-        "description": "Aktualisiere CKW API-URL-Parameter und Schwellenwerte. Die Datumsparameter der URL werden automatisch berechnet.",
+        "description": "Aktualisiere Tarif und Preisschwellen. Die offizielle CKW-API und der Kompletttarif werden automatisch verwendet.",
         "data": {
-          "api_url": "API-URL",
           "tariff_name": "Tarifname",
-          "tariff_type": "Tariftyp",
           "low_price_threshold": "Untere Preisschwelle (CHF/kWh)",
           "high_price_threshold": "Obere Preisschwelle (CHF/kWh)"
         }
@@ -31,6 +27,17 @@
   "entity": {
     "sensor": {
       "current_price": {"name": "Aktueller Preis"},
+      "next_change": {"name": "Nächster Preiswechsel"},
+      "average_price_today": {"name": "Durchschnittspreis heute"},
+      "average_price_tomorrow": {"name": "Durchschnittspreis morgen"},
+      "lowest_2h_window_today": {"name": "Günstigstes 2-Stunden-Fenster heute"},
+      "lowest_4h_window_today": {"name": "Günstigstes 4-Stunden-Fenster heute"},
+      "highest_2h_window_today": {"name": "Teuerstes 2-Stunden-Fenster heute"},
+      "highest_4h_window_today": {"name": "Teuerstes 4-Stunden-Fenster heute"},
+      "lowest_2h_window_tomorrow": {"name": "Günstigstes 2-Stunden-Fenster morgen"},
+      "lowest_4h_window_tomorrow": {"name": "Günstigstes 4-Stunden-Fenster morgen"},
+      "highest_2h_window_tomorrow": {"name": "Teuerstes 2-Stunden-Fenster morgen"},
+      "highest_4h_window_tomorrow": {"name": "Teuerstes 4-Stunden-Fenster morgen"},
       "min_price": {"name": "Minimaler Preis"},
       "max_price": {"name": "Maximaler Preis"},
       "avg_price": {"name": "Durchschnittspreis"},
@@ -38,7 +45,17 @@
     },
     "binary_sensor": {
       "below_low_price_threshold": {"name": "Unter unterer Preisschwelle"},
-      "above_high_price_threshold": {"name": "Über oberer Preisschwelle"}
+      "above_high_price_threshold": {"name": "Über oberer Preisschwelle"},
+      "cheapest_10_percent_hours_today": {"name": "Günstigste 10 % der Preis-Slots heute"},
+      "cheapest_25_percent_hours_today": {"name": "Günstigste 25 % der Preis-Slots heute"},
+      "cheapest_50_percent_hours_today": {"name": "Günstigste 50 % der Preis-Slots heute"},
+      "most_expensive_10_percent_hours_today": {"name": "Teuerste 10 % der Preis-Slots heute"},
+      "most_expensive_25_percent_hours_today": {"name": "Teuerste 25 % der Preis-Slots heute"},
+      "most_expensive_50_percent_hours_today": {"name": "Teuerste 50 % der Preis-Slots heute"},
+      "in_lowest_2h_window_today": {"name": "Im günstigsten 2-Stunden-Fenster heute"},
+      "in_lowest_4h_window_today": {"name": "Im günstigsten 4-Stunden-Fenster heute"},
+      "in_highest_2h_window_today": {"name": "Im teuersten 2-Stunden-Fenster heute"},
+      "in_highest_4h_window_today": {"name": "Im teuersten 4-Stunden-Fenster heute"}
     }
   }
 }

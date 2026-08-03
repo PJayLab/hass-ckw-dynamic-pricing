@@ -3,22 +3,18 @@
     "step": {
       "user": {
         "title": "CKW Dynamic Pricing setup",
-        "description": "Configure the CKW Dynamic Pricing integration. URL date parameters are calculated automatically.",
+        "description": "Choose your CKW tariff and price thresholds. The official CKW API and all-inclusive tariff are managed automatically.",
         "data": {
-          "api_url": "API URL",
           "tariff_name": "Tariff name",
-          "tariff_type": "Tariff type",
           "low_price_threshold": "Low price threshold (CHF/kWh)",
           "high_price_threshold": "High price threshold (CHF/kWh)"
         }
       },
       "init": {
         "title": "CKW Dynamic Pricing options",
-        "description": "Update CKW API URL parameters and threshold values. URL date parameters are calculated automatically.",
+        "description": "Update the tariff and price thresholds. The official CKW API and all-inclusive tariff are managed automatically.",
         "data": {
-          "api_url": "API URL",
           "tariff_name": "Tariff name",
-          "tariff_type": "Tariff type",
           "low_price_threshold": "Low price threshold (CHF/kWh)",
           "high_price_threshold": "High price threshold (CHF/kWh)"
         }
