@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -52,6 +53,14 @@ SENSOR_DESCRIPTIONS = (
         value_fn=lambda data: get_next_change(data.get("prices", [])),
     ),
     CKWPriceSensorEntityDescription(
+        key="last_api_update",
+        translation_key="last_api_update",
+        icon="mdi:clock-check-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: None,
+    ),
+    CKWPriceSensorEntityDescription(
         key="average_price_today",
         translation_key="average_price_today",
         native_unit_of_measurement="CHF/kWh",
@@ -80,9 +89,9 @@ SENSOR_DESCRIPTIONS = (
                 data.get(f"prices_{day}", []), hours, edge
             ),
         )
-        for day in ("today", "tomorrow")
         for edge in ("lowest", "highest")
         for hours in (2, 4)
+        for day in ("today", "tomorrow")
     ),
     CKWPriceSensorEntityDescription(
         key="min_price",
@@ -101,17 +110,11 @@ SENSOR_DESCRIPTIONS = (
         value_fn=lambda data: data.get("max_price"),
     ),
     CKWPriceSensorEntityDescription(
-        key="avg_price",
-        translation_key="avg_price",
-        native_unit_of_measurement="CHF/kWh",
-        icon="mdi:chart-line",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data.get("avg_price"),
-    ),
-    CKWPriceSensorEntityDescription(
         key="all_prices",
         translation_key="all_prices",
         icon="mdi:format-list-bulleted",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: len(data.get("prices", [])),
     ),
 )
@@ -178,6 +181,8 @@ class CKWPriceSensor(CoordinatorEntity, SensorEntity):
             return None
         if self.entity_description.key == "current_price":
             return get_current_price(self.coordinator.data.get("prices", []))
+        if self.entity_description.key == "last_api_update":
+            return self.coordinator.last_update_success_time
         return self.entity_description.value_fn(self.coordinator.data)
 
     @property

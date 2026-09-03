@@ -22,12 +22,16 @@
     },
     "error": {
       "unknown": "Ein unbekannter Fehler ist aufgetreten"
+    },
+    "abort": {
+      "tariff_already_configured": "Dieser Tarif ist bereits eingerichtet. Füge den anderen Tarif hinzu oder bearbeite den bestehenden Eintrag."
     }
   },
   "entity": {
     "sensor": {
       "current_price": {"name": "Aktueller Preis"},
       "next_change": {"name": "Nächster Preiswechsel"},
+      "last_api_update": {"name": "Letzte API-Aktualisierung"},
       "average_price_today": {"name": "Durchschnittspreis heute"},
       "average_price_tomorrow": {"name": "Durchschnittspreis morgen"},
       "lowest_2h_window_today": {"name": "Günstigstes 2-Stunden-Fenster heute"},
@@ -40,7 +44,6 @@
       "highest_4h_window_tomorrow": {"name": "Teuerstes 4-Stunden-Fenster morgen"},
       "min_price": {"name": "Minimaler Preis"},
       "max_price": {"name": "Maximaler Preis"},
-      "avg_price": {"name": "Durchschnittspreis"},
       "all_prices": {"name": "Alle Preise"}
     },
     "binary_sensor": {
@@ -56,6 +59,9 @@
       "in_lowest_4h_window_today": {"name": "Im günstigsten 4-Stunden-Fenster heute"},
       "in_highest_2h_window_today": {"name": "Im teuersten 2-Stunden-Fenster heute"},
       "in_highest_4h_window_today": {"name": "Im teuersten 4-Stunden-Fenster heute"}
+    },
+    "button": {
+      "refresh_tariffs": {"name": "Tarife aktualisieren"}
     }
   }
 }

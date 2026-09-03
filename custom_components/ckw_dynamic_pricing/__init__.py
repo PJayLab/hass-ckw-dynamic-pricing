@@ -8,12 +8,12 @@ from typing import Any
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CONF_API_URL,
     CONF_HIGH_PRICE_THRESHOLD,
     CONF_LOW_PRICE_THRESHOLD,
     CONF_TARIFF_NAME,
@@ -27,6 +27,7 @@ from .const import (
     LEGACY_CONF_PRICE_THRESHOLD,
     PLATFORMS,
     SCAN_INTERVAL,
+    TARIFF_LABELS,
 )
 from .price import get_average_price, get_current_price, get_max_price, get_min_price
 
@@ -35,9 +36,27 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up CKW Dynamic Pricing from a config entry."""
+    tariff_name = entry.data.get(CONF_TARIFF_NAME, DEFAULT_TARIFF_NAMES[0])
+    tariff_label = TARIFF_LABELS.get(
+        tariff_name, tariff_name.replace("_", " ").title()
+    )
+    expected_title = f"CKW Dynamic Pricing – {tariff_label}"
+    if entry.title == "CKW Dynamic Pricing":
+        hass.config_entries.async_update_entry(entry, title=expected_title)
+
+    # Version 2.1 replaces the duplicate generic average with the explicit
+    # "Average price today" entity. Remove the obsolete registry entry.
+    registry = er.async_get(hass)
+    obsolete_entity_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_avg_price"
+    )
+    if obsolete_entity_id:
+        registry.async_remove(obsolete_entity_id)
+
     hass.data.setdefault(DOMAIN, {})
     coordinator = CKWPricingCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    coordinator.async_start()
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_update_options))
@@ -71,8 +90,12 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self.entry = entry
+        self._remove_midnight_listener = None
+
+    def async_start(self) -> None:
+        """Start time-based updates after the first refresh succeeds."""
         self._remove_midnight_listener = async_track_time_change(
-            hass, self._async_midnight_refresh, hour=0, minute=0, second=5
+            self.hass, self._async_midnight_refresh, hour=0, minute=0, second=5
         )
 
     async def _async_midnight_refresh(self, now: datetime) -> None:
@@ -92,7 +115,9 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
     def async_shutdown(self) -> None:
         """Remove the scheduled midnight refresh listener."""
-        self._remove_midnight_listener()
+        if self._remove_midnight_listener:
+            self._remove_midnight_listener()
+            self._remove_midnight_listener = None
 
     @property
     def config(self) -> dict[str, Any]:
@@ -112,7 +137,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         }
         try:
             async with session.get(
-                self.config.get(CONF_API_URL, DEFAULT_API_URL),
+                DEFAULT_API_URL,
                 params=params,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:

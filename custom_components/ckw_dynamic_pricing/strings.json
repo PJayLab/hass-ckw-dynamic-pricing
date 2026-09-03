@@ -22,19 +22,25 @@
     },
     "error": {
       "unknown": "An unknown error occurred"
+    },
+    "abort": {
+      "tariff_already_configured": "This tariff is already configured. Add the other tariff or edit its existing entry."
     }
   },
   "entity": {
     "sensor": {
       "current_price": {"name": "Current price"},
+      "last_api_update": {"name": "Last API update"},
       "min_price": {"name": "Minimum price"},
       "max_price": {"name": "Maximum price"},
-      "avg_price": {"name": "Average price"},
       "all_prices": {"name": "All prices"}
     },
     "binary_sensor": {
       "below_low_price_threshold": {"name": "Below low price threshold"},
       "above_high_price_threshold": {"name": "Above high price threshold"}
+    },
+    "button": {
+      "refresh_tariffs": {"name": "Refresh tariffs"}
     }
   }
 }

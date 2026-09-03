@@ -22,12 +22,16 @@
     },
     "error": {
       "unknown": "An unknown error occurred"
+    },
+    "abort": {
+      "tariff_already_configured": "This tariff is already configured. Add the other tariff or edit its existing entry."
     }
   },
   "entity": {
     "sensor": {
       "current_price": {"name": "Current price"},
       "next_change": {"name": "Next price change"},
+      "last_api_update": {"name": "Last API update"},
       "average_price_today": {"name": "Average price today"},
       "average_price_tomorrow": {"name": "Average price tomorrow"},
       "lowest_2h_window_today": {"name": "Lowest 2-hour window today"},
@@ -40,7 +44,6 @@
       "highest_4h_window_tomorrow": {"name": "Highest 4-hour window tomorrow"},
       "min_price": {"name": "Minimum price"},
       "max_price": {"name": "Maximum price"},
-      "avg_price": {"name": "Average price"},
       "all_prices": {"name": "All prices"}
     },
     "binary_sensor": {
@@ -56,6 +59,9 @@
       "in_lowest_4h_window_today": {"name": "In lowest 4-hour window today"},
       "in_highest_2h_window_today": {"name": "In highest 2-hour window today"},
       "in_highest_4h_window_today": {"name": "In highest 4-hour window today"}
+    },
+    "button": {
+      "refresh_tariffs": {"name": "Refresh tariffs"}
     }
   }
 }
