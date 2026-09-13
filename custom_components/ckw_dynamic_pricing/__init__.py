@@ -90,6 +90,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self.entry = entry
+        self.last_update_success_time: datetime | None = None
         self._remove_midnight_listener = None
 
     def async_start(self) -> None:
@@ -164,7 +165,10 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("No price data received from CKW API for today")
 
             combined = prices_today + prices_tomorrow
-            return self._process_data(prices_today, prices_tomorrow, combined)
+            data = self._process_data(prices_today, prices_tomorrow, combined)
+            # Track API success explicitly; local midnight updates are not fetches.
+            self.last_update_success_time = dt_util.utcnow()
+            return data
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
